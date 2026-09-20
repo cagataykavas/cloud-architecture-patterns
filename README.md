@@ -64,3 +64,32 @@ Use compensating actions instead of one distributed ACID transaction when indepe
 Commit business state and an outbox event in one local database transaction, then publish asynchronously. This avoids the dual-write failure window.
 
 The goal of this repository is not memorizing vendor names; it is learning architectures that survive vendor changes.
+
+
+## Executable reliability control
+
+The catalog now includes a dependency-free multi-window SLO burn-rate evaluator in
+`src/cloud_patterns/slo_burn_rate.py`. It converts request/failure counters into
+vendor-neutral operational evidence:
+
+- error rate and error-budget burn rate for every window;
+- paired fast/slow-window alerting to distinguish spikes from sustained failures;
+- minimum-traffic gates that fail closed when evidence is too sparse;
+- deterministic JSON-ready evidence and reason codes;
+- strict validation for duplicate windows and invalid counters.
+
+```python
+from cloud_patterns.slo_burn_rate import BurnRatePolicy, SLIWindow, evaluate_burn_rate
+
+decision = evaluate_burn_rate(
+    [SLIWindow("5m", 10_000, 160), SLIWindow("1h", 100_000, 700)],
+    fast_window="5m",
+    slow_window="1h",
+    policy=BurnRatePolicy(objective=0.999),
+)
+print(decision.to_dict())
+```
+
+Thresholds are configurable operational policy, not universal defaults. The evaluator
+assumes the supplied counters use the same SLI definition and correctly nested time
+windows; it does not query a monitoring backend or deduplicate requests.
