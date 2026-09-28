@@ -104,14 +104,16 @@ class AuditTests(unittest.TestCase):
         manifest = valid_manifest()
         manifest["measured_traffic_switch_seconds"] = 121
         self.assertEqual(
-            self.audit(manifest)["findings"][0]["code"], "TRAFFIC_SWITCH_BUDGET_EXCEEDED"
+            self.audit(manifest)["findings"][0]["code"],
+            "TRAFFIC_SWITCH_BUDGET_EXCEEDED",
         )
 
     def test_rejects_critical_cold_recovery(self) -> None:
         manifest = valid_manifest()
         manifest["components"][0]["recovery_mode"] = "backup_restore"
         self.assertEqual(
-            self.audit(manifest)["findings"][0]["code"], "CRITICAL_COMPONENT_COLD_RECOVERY"
+            self.audit(manifest)["findings"][0]["code"],
+            "CRITICAL_COMPONENT_COLD_RECOVERY",
         )
 
     def test_rejects_rto_rpo_capacity_and_validation_breaches(self) -> None:
@@ -124,7 +126,12 @@ class AuditTests(unittest.TestCase):
         codes = {item["code"] for item in self.audit(manifest)["findings"]}
         self.assertEqual(
             codes,
-            {"RECOVERY_CAPACITY_INSUFFICIENT", "RPO_EXCEEDED", "RTO_EXCEEDED", "VALIDATION_FAILED"},
+            {
+                "RECOVERY_CAPACITY_INSUFFICIENT",
+                "RPO_EXCEEDED",
+                "RTO_EXCEEDED",
+                "VALIDATION_FAILED",
+            },
         )
 
     def test_rejects_unavailable_direct_dependency(self) -> None:
@@ -166,14 +173,17 @@ class AuditTests(unittest.TestCase):
         manifest = valid_manifest()
         manifest["components"][0]["dependencies"] = ["api"]
         self.assertIn(
-            "DEPENDENCY_CYCLE", {item["code"] for item in self.audit(manifest)["findings"]}
+            "DEPENDENCY_CYCLE",
+            {item["code"] for item in self.audit(manifest)["findings"]},
         )
 
     def test_can_exclude_important_components_from_closure(self) -> None:
         manifest = valid_manifest()
         manifest["components"][2]["tier"] = "important"
         strict = self.audit(manifest)
-        relaxed = self.audit(manifest, Policy(require_important_dependency_closure=False))
+        relaxed = self.audit(
+            manifest, Policy(require_important_dependency_closure=False)
+        )
         self.assertFalse(strict["accepted"])
         self.assertTrue(relaxed["accepted"])
 
@@ -194,7 +204,9 @@ class MalformedEvidenceTests(unittest.TestCase):
 
     def test_rejects_duplicate_component_and_dependency(self) -> None:
         duplicate_component = valid_manifest()
-        duplicate_component["components"].append(deepcopy(duplicate_component["components"][0]))
+        duplicate_component["components"].append(
+            deepcopy(duplicate_component["components"][0])
+        )
         with self.assertRaises(EvidenceError):
             audit(duplicate_component, Policy(), now=NOW)
         duplicate_dependency = valid_manifest()
@@ -236,11 +248,15 @@ class MalformedEvidenceTests(unittest.TestCase):
 
     def test_rejects_component_and_dependency_budgets(self) -> None:
         manifest = valid_manifest()
-        manifest["components"] = [deepcopy(manifest["components"][0]) for _ in range(513)]
+        manifest["components"] = [
+            deepcopy(manifest["components"][0]) for _ in range(513)
+        ]
         with self.assertRaises(EvidenceError):
             audit(manifest, Policy(), now=NOW)
         manifest = valid_manifest()
-        manifest["components"][1]["dependencies"] = [f"dep-{index}" for index in range(65)]
+        manifest["components"][1]["dependencies"] = [
+            f"dep-{index}" for index in range(65)
+        ]
         with self.assertRaises(EvidenceError):
             audit(manifest, Policy(), now=NOW)
 
@@ -251,7 +267,10 @@ class MalformedEvidenceTests(unittest.TestCase):
             b"{" + b" " * (256 * 1024),
         ]
         for raw in samples:
-            with self.subTest(size=len(raw)), tempfile.TemporaryDirectory() as directory:
+            with (
+                self.subTest(size=len(raw)),
+                tempfile.TemporaryDirectory() as directory,
+            ):
                 path = Path(directory) / "evidence.json"
                 path.write_bytes(raw)
                 with self.assertRaises(EvidenceError):
@@ -264,7 +283,8 @@ class CliTests(unittest.TestCase):
             source = Path(directory) / "manifest.json"
             output = Path(directory) / "report.json"
             source.write_text(
-                manifest if isinstance(manifest, str) else json.dumps(manifest), encoding="utf-8"
+                manifest if isinstance(manifest, str) else json.dumps(manifest),
+                encoding="utf-8",
             )
             result = subprocess.run(
                 [

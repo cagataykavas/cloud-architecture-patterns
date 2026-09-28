@@ -115,7 +115,11 @@ def _identifier(value: Any, field: str) -> str:
 
 
 def _number(value: Any, field: str, *, positive: bool = False) -> float:
-    if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
+    if (
+        isinstance(value, bool)
+        or not isinstance(value, (int, float))
+        or not math.isfinite(value)
+    ):
         raise EvidenceError(f"{field} must be finite numeric evidence")
     result = float(value)
     if result < 0 or (positive and result <= 0) or result > 1_000_000_000:
@@ -172,12 +176,18 @@ def _parse_component(raw: Any, index: int) -> Component:
     if mode not in RECOVERY_MODES:
         raise EvidenceError(f"components[{index}].recovery_mode is unsupported")
     dependencies = raw["dependencies"]
-    if not isinstance(dependencies, list) or len(dependencies) > MAX_DEPENDENCIES_PER_COMPONENT:
+    if (
+        not isinstance(dependencies, list)
+        or len(dependencies) > MAX_DEPENDENCIES_PER_COMPONENT
+    ):
         raise EvidenceError(f"components[{index}].dependencies exceeds its budget")
     parsed_dependencies = tuple(
         _identifier(item, f"components[{index}].dependencies") for item in dependencies
     )
-    if len(parsed_dependencies) != len(set(parsed_dependencies)) or name in parsed_dependencies:
+    if (
+        len(parsed_dependencies) != len(set(parsed_dependencies))
+        or name in parsed_dependencies
+    ):
         raise EvidenceError(
             f"components[{index}].dependencies contains a duplicate or self-reference"
         )
@@ -193,7 +203,9 @@ def _parse_component(raw: Any, index: int) -> Component:
             raw["recovery_order"], f"components[{index}].recovery_order", minimum=1
         ),
         target_rto_seconds=_number(
-            raw["target_rto_seconds"], f"components[{index}].target_rto_seconds", positive=True
+            raw["target_rto_seconds"],
+            f"components[{index}].target_rto_seconds",
+            positive=True,
         ),
         measured_rto_seconds=_number(
             raw["measured_rto_seconds"], f"components[{index}].measured_rto_seconds"
@@ -205,7 +217,9 @@ def _parse_component(raw: Any, index: int) -> Component:
             raw["measured_rpo_seconds"], f"components[{index}].measured_rpo_seconds"
         ),
         required_capacity=_number(
-            raw["required_capacity"], f"components[{index}].required_capacity", positive=True
+            raw["required_capacity"],
+            f"components[{index}].required_capacity",
+            positive=True,
         ),
         recovery_capacity=_number(
             raw["recovery_capacity"], f"components[{index}].recovery_capacity"
@@ -219,7 +233,9 @@ def _component_ref(name: str) -> str:
 
 
 def _canonical_digest(value: Any) -> str:
-    encoded = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode()
+    encoded = json.dumps(
+        value, sort_keys=True, separators=(",", ":"), ensure_ascii=True
+    ).encode()
     return hashlib.sha256(encoded).hexdigest()
 
 
@@ -271,16 +287,29 @@ def audit(
     if completed.timestamp() > current.timestamp() + policy.max_future_skew_seconds:
         raise EvidenceError("completed_at is too far in the future")
     raw_components = manifest["components"]
-    if not isinstance(raw_components, list) or not 1 <= len(raw_components) <= MAX_COMPONENTS:
+    if (
+        not isinstance(raw_components, list)
+        or not 1 <= len(raw_components) <= MAX_COMPONENTS
+    ):
         raise EvidenceError("components count is outside its budget")
-    parsed = [_parse_component(item, index) for index, item in enumerate(raw_components)]
+    parsed = [
+        _parse_component(item, index) for index, item in enumerate(raw_components)
+    ]
     components = {component.name: component for component in parsed}
     if len(components) != len(parsed):
         raise EvidenceError("component names must be unique")
-    if sum(len(component.dependencies) for component in parsed) > MAX_TOTAL_DEPENDENCIES:
+    if (
+        sum(len(component.dependencies) for component in parsed)
+        > MAX_TOTAL_DEPENDENCIES
+    ):
         raise EvidenceError("total dependency count exceeds its budget")
     unknown = sorted(
-        {dep for component in parsed for dep in component.dependencies if dep not in components}
+        {
+            dep
+            for component in parsed
+            for dep in component.dependencies
+            if dep not in components
+        }
     )
     if unknown:
         raise EvidenceError("dependency references an unknown component")
@@ -299,7 +328,9 @@ def audit(
     if age_seconds > policy.max_rehearsal_age_days * 86400:
         add("REHEARSAL_STALE")
     traffic_budget = _number(
-        manifest["traffic_switch_budget_seconds"], "traffic_switch_budget_seconds", positive=True
+        manifest["traffic_switch_budget_seconds"],
+        "traffic_switch_budget_seconds",
+        positive=True,
     )
     measured_switch = _number(
         manifest["measured_traffic_switch_seconds"], "measured_traffic_switch_seconds"
@@ -310,7 +341,9 @@ def audit(
         add("DEPENDENCY_CYCLE")
 
     evaluated_tiers = (
-        {"critical", "important"} if policy.require_important_dependency_closure else {"critical"}
+        {"critical", "important"}
+        if policy.require_important_dependency_closure
+        else {"critical"}
     )
     required_names = {item.name for item in parsed if item.tier in evaluated_tiers}
     pending = list(required_names)
@@ -337,7 +370,10 @@ def audit(
         if required:
             for dependency_name in sorted(component.dependencies):
                 dependency = components[dependency_name]
-                if dependency.recovery_mode == "unavailable" or not dependency.validation_passed:
+                if (
+                    dependency.recovery_mode == "unavailable"
+                    or not dependency.validation_passed
+                ):
                     add("DEPENDENCY_NOT_RECOVERABLE", component)
                 if dependency.recovery_order >= component.recovery_order:
                     add("DEPENDENCY_RECOVERY_ORDER_INVALID", component)
@@ -345,7 +381,9 @@ def audit(
                     add("DEPENDENCY_RTO_MISALIGNED", component)
 
     findings.sort(key=lambda item: (item["code"], item.get("component_ref", "")))
-    capacity_ratios = [item.recovery_capacity / item.required_capacity for item in parsed]
+    capacity_ratios = [
+        item.recovery_capacity / item.required_capacity for item in parsed
+    ]
     report: dict[str, Any] = {
         "schema_version": 1,
         "accepted": not findings,
