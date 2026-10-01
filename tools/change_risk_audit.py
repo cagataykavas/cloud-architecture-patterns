@@ -18,11 +18,27 @@ MAX_DEPENDENCIES = 8_192
 MAX_FINDINGS = 2_048
 IDENTIFIER_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:/-]{0,191}$")
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
-KINDS = {"compute", "database", "dns", "iam", "network", "object_store", "queue", "secret", "other"}
+KINDS = {
+    "compute",
+    "database",
+    "dns",
+    "iam",
+    "network",
+    "object_store",
+    "queue",
+    "secret",
+    "other",
+}
 CRITICALITIES = {"critical", "important", "standard"}
 DATA_CLASSES = {"none", "ephemeral", "persistent"}
 ACTIONS = {"no_op", "create", "update", "delete", "replace"}
-PRIVILEGE_SCOPES = {"none": 0, "scoped": 1, "project": 2, "account": 3, "organization": 4}
+PRIVILEGE_SCOPES = {
+    "none": 0,
+    "scoped": 1,
+    "project": 2,
+    "account": 3,
+    "organization": 4,
+}
 
 
 class ChangeRiskError(ValueError):
@@ -240,7 +256,9 @@ def _parse_state(value: object, path: str) -> ResourceState:
         public_access=_boolean(raw["public_access"], f"{path}.public_access"),
         encrypted=_boolean(raw["encrypted"], f"{path}.encrypted"),
         multi_zone=_boolean(raw["multi_zone"], f"{path}.multi_zone"),
-        deletion_protection=_boolean(raw["deletion_protection"], f"{path}.deletion_protection"),
+        deletion_protection=_boolean(
+            raw["deletion_protection"], f"{path}.deletion_protection"
+        ),
         privilege_scope=_choice(
             raw["privilege_scope"], PRIVILEGE_SCOPES, f"{path}.privilege_scope"
         ),
@@ -255,11 +273,20 @@ def parse_plan(value: object) -> ChangePlan:
     root = _object(value, "plan")
     _keys(
         root,
-        {"generated_at", "plan_id", "source_revision", "state_snapshot_digest", "resources"},
+        {
+            "generated_at",
+            "plan_id",
+            "source_revision",
+            "state_snapshot_digest",
+            "resources",
+        },
         "plan",
     )
     raw_resources = root["resources"]
-    if not isinstance(raw_resources, list) or not 1 <= len(raw_resources) <= MAX_RESOURCES:
+    if (
+        not isinstance(raw_resources, list)
+        or not 1 <= len(raw_resources) <= MAX_RESOURCES
+    ):
         raise ChangeRiskError("resources must contain between 1 and 1024 entries")
     resources: list[ResourceChange] = []
     seen: set[str] = set()
@@ -305,10 +332,16 @@ def parse_plan(value: object) -> ChangePlan:
         before = _optional_state(raw["before"], f"{path}.before")
         after = _optional_state(raw["after"], f"{path}.after")
         if action == "create" and (before is not None or after is None):
-            raise ChangeRiskError("create requires null before and non-null after state")
+            raise ChangeRiskError(
+                "create requires null before and non-null after state"
+            )
         if action == "delete" and (before is None or after is not None):
-            raise ChangeRiskError("delete requires non-null before and null after state")
-        if action in {"no_op", "update", "replace"} and (before is None or after is None):
+            raise ChangeRiskError(
+                "delete requires non-null before and null after state"
+            )
+        if action in {"no_op", "update", "replace"} and (
+            before is None or after is None
+        ):
             raise ChangeRiskError(f"{action} requires before and after state")
         if action == "no_op" and before != after:
             raise ChangeRiskError("no_op before and after states must match")
@@ -317,18 +350,30 @@ def parse_plan(value: object) -> ChangePlan:
             ResourceChange(
                 resource_id=resource_id,
                 kind=_choice(raw["kind"], KINDS, f"{path}.kind"),
-                criticality=_choice(raw["criticality"], CRITICALITIES, f"{path}.criticality"),
-                data_class=_choice(raw["data_class"], DATA_CLASSES, f"{path}.data_class"),
+                criticality=_choice(
+                    raw["criticality"], CRITICALITIES, f"{path}.criticality"
+                ),
+                data_class=_choice(
+                    raw["data_class"], DATA_CLASSES, f"{path}.data_class"
+                ),
                 action=action,
                 depends_on=dependencies,
                 before=before,
                 after=after,
-                change_ticket=_optional_identifier(raw["change_ticket"], f"{path}.change_ticket"),
-                approval_digest=_optional_digest(raw["approval_digest"], f"{path}.approval_digest"),
-                backup_verified_at=(
-                    None if backup is None else _timestamp(backup, f"{path}.backup_verified_at")
+                change_ticket=_optional_identifier(
+                    raw["change_ticket"], f"{path}.change_ticket"
                 ),
-                replacement_ready=_boolean(raw["replacement_ready"], f"{path}.replacement_ready"),
+                approval_digest=_optional_digest(
+                    raw["approval_digest"], f"{path}.approval_digest"
+                ),
+                backup_verified_at=(
+                    None
+                    if backup is None
+                    else _timestamp(backup, f"{path}.backup_verified_at")
+                ),
+                replacement_ready=_boolean(
+                    raw["replacement_ready"], f"{path}.replacement_ready"
+                ),
             )
         )
 
@@ -354,8 +399,12 @@ def parse_plan(value: object) -> ChangePlan:
 
 
 def _validate_acyclic(resources: list[ResourceChange]) -> None:
-    indegree = {resource.resource_id: len(resource.depends_on) for resource in resources}
-    dependents: dict[str, list[str]] = {resource.resource_id: [] for resource in resources}
+    indegree = {
+        resource.resource_id: len(resource.depends_on) for resource in resources
+    }
+    dependents: dict[str, list[str]] = {
+        resource.resource_id: [] for resource in resources
+    }
     for resource in resources:
         for dependency in resource.depends_on:
             dependents[dependency].append(resource.resource_id)
@@ -411,14 +460,19 @@ def _requires_approval(resource: ResourceChange) -> bool:
     after = resource.after
     if resource.data_class == "persistent" and resource.action in {"delete", "replace"}:
         return True
-    if after is not None and after.public_access and (before is None or not before.public_access):
+    if (
+        after is not None
+        and after.public_access
+        and (before is None or not before.public_access)
+    ):
         return True
     if (
         after is not None
         and PRIVILEGE_SCOPES[after.privilege_scope] >= PRIVILEGE_SCOPES["account"]
         and (
             before is None
-            or PRIVILEGE_SCOPES[after.privilege_scope] > PRIVILEGE_SCOPES[before.privilege_scope]
+            or PRIVILEGE_SCOPES[after.privilege_scope]
+            > PRIVILEGE_SCOPES[before.privilege_scope]
         )
     ):
         return True
@@ -460,7 +514,9 @@ def audit_change_plan(
     now_utc = now.astimezone(UTC)
     effective_policy = policy or ChangeRiskPolicy()
     resources = {resource.resource_id: resource for resource in parsed.resources}
-    changed = tuple(resource for resource in parsed.resources if resource.action != "no_op")
+    changed = tuple(
+        resource for resource in parsed.resources if resource.action != "no_op"
+    )
     dependents: dict[str, list[str]] = {resource_id: [] for resource_id in resources}
     for resource in parsed.resources:
         for dependency in resource.depends_on:
@@ -477,7 +533,10 @@ def audit_change_plan(
         if len(findings) < MAX_FINDINGS:
             findings.append(
                 Finding(
-                    code=code, resource_ref=None if resource is None else _ref(resource.resource_id)
+                    code=code,
+                    resource_ref=None
+                    if resource is None
+                    else _ref(resource.resource_id),
                 )
             )
 
@@ -521,7 +580,10 @@ def audit_change_plan(
         security_regression_count += len(regressions)
         for regression in regressions:
             record(regression, resource)
-        if resource.data_class == "persistent" and resource.action in {"delete", "replace"}:
+        if resource.data_class == "persistent" and resource.action in {
+            "delete",
+            "replace",
+        }:
             destructive_persistent_count += 1
             if resource.backup_verified_at is None:
                 record("missing_verified_backup", resource)
@@ -556,7 +618,9 @@ def audit_change_plan(
         generated_at=_format_timestamp(parsed.generated_at),
         resource_count=len(parsed.resources),
         changed_resource_count=len(changed),
-        critical_changed_count=sum(resource.criticality == "critical" for resource in changed),
+        critical_changed_count=sum(
+            resource.criticality == "critical" for resource in changed
+        ),
         critical_impacted_count=len(impacted_union),
         maximum_resource_blast_radius=maximum_blast_radius,
         destructive_persistent_count=destructive_persistent_count,
@@ -595,12 +659,17 @@ def load_plan(path: Path) -> ChangePlan:
 
 
 def _write_json(payload: dict[str, Any], output: Path | None) -> None:
-    rendered = json.dumps(payload, sort_keys=True, separators=(",", ":"), allow_nan=False) + "\n"
+    rendered = (
+        json.dumps(payload, sort_keys=True, separators=(",", ":"), allow_nan=False)
+        + "\n"
+    )
     if output is None:
         print(rendered, end="")
         return
     output.parent.mkdir(parents=True, exist_ok=True)
-    descriptor, temporary_name = tempfile.mkstemp(prefix=f".{output.name}.", dir=output.parent)
+    descriptor, temporary_name = tempfile.mkstemp(
+        prefix=f".{output.name}.", dir=output.parent
+    )
     try:
         with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
             handle.write(rendered)
@@ -613,7 +682,9 @@ def _write_json(payload: dict[str, Any], output: Path | None) -> None:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Audit infrastructure change blast radius")
+    parser = argparse.ArgumentParser(
+        description="Audit infrastructure change blast radius"
+    )
     parser.add_argument("plan", type=Path, help="normalized infrastructure plan JSON")
     parser.add_argument("--now", required=True, help="UTC-aware audit timestamp")
     parser.add_argument("--output", type=Path, help="atomically write the audit report")

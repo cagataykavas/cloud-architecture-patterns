@@ -340,8 +340,14 @@ def test_finding_report_is_bounded_without_losing_total_count() -> None:
     [
         (lambda value: value.update(extra=True), "missing or unexpected"),
         (lambda value: value["resources"].append(value["resources"][0]), "unique"),
-        (lambda value: value["resources"][0]["depends_on"].append("missing"), "declared"),
-        (lambda value: value["resources"][0].update(action="create"), "create requires"),
+        (
+            lambda value: value["resources"][0]["depends_on"].append("missing"),
+            "declared",
+        ),
+        (
+            lambda value: value["resources"][0].update(action="create"),
+            "create requires",
+        ),
         (lambda value: value["resources"][0]["before"].update(encrypted=1), "boolean"),
         (lambda value: value.update(source_revision="A" * 64), "lowercase SHA-256"),
         (lambda value: value.update(generated_at="2026-10-01"), "timezone"),
@@ -407,7 +413,9 @@ def test_load_rejects_symbolic_link(tmp_path: Path) -> None:
         load_plan(link)
 
 
-def run_cli(tmp_path: Path, raw: str, *arguments: str) -> subprocess.CompletedProcess[str]:
+def run_cli(
+    tmp_path: Path, raw: str, *arguments: str
+) -> subprocess.CompletedProcess[str]:
     plan_path = tmp_path / "plan.json"
     plan_path.write_text(raw, encoding="utf-8")
     return subprocess.run(
