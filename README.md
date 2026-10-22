@@ -64,3 +64,60 @@ Use compensating actions instead of one distributed ACID transaction when indepe
 Commit business state and an outbox event in one local database transaction, then publish asynchronously. This avoids the dual-write failure window.
 
 The goal of this repository is not memorizing vendor names; it is learning architectures that survive vendor changes.
+
+
+## Executable reliability control
+
+The catalog now includes a dependency-free multi-window SLO burn-rate evaluator in
+`src/cloud_patterns/slo_burn_rate.py`. It converts request/failure counters into
+vendor-neutral operational evidence:
+
+- error rate and error-budget burn rate for every window;
+- paired fast/slow-window alerting to distinguish spikes from sustained failures;
+- minimum-traffic gates that fail closed when evidence is too sparse;
+- deterministic JSON-ready evidence and reason codes;
+- strict validation for duplicate windows and invalid counters.
+
+```python
+from cloud_patterns.slo_burn_rate import BurnRatePolicy, SLIWindow, evaluate_burn_rate
+
+decision = evaluate_burn_rate(
+    [SLIWindow("5m", 10_000, 160), SLIWindow("1h", 100_000, 700)],
+    fast_window="5m",
+    slow_window="1h",
+    policy=BurnRatePolicy(objective=0.999),
+)
+print(decision.to_dict())
+```
+
+Thresholds are configurable operational policy, not universal defaults. The evaluator
+assumes the supplied counters use the same SLI definition and correctly nested time
+windows; it does not query a monitoring backend or deduplicate requests.
+
+### Prometheus adapter
+
+`windows_from_prometheus` connects the policy core to paired Prometheus HTTP API
+instant vectors while keeping HTTP transport outside the trusted evaluator. It
+requires an explicit bounded window set and validates fresh paired timestamps,
+integer counter semantics, complete request/failure coverage, duplicate-free JSON,
+label/result budgets, and a configurable 256 KiB payload ceiling before constructing
+`SLIWindow` objects.
+
+```python
+from datetime import UTC, datetime
+
+from cloud_patterns.prometheus_sli import windows_from_prometheus
+
+windows = windows_from_prometheus(
+    requests_response_body,
+    failures_response_body,
+    expected_windows=("5m", "1h"),
+    observed_at=datetime.now(UTC),
+)
+```
+
+The adapter trusts the HTTPS client, Prometheus server, query definitions and clock.
+It validates returned evidence but does not prove that both queries used identical
+filters or that the counters are monotonic and reset-safe. Production recording rules
+should emit exact integer counts over closed windows with the same label scope;
+extrapolated `rate()` or `increase()` results are intentionally outside this contract.
