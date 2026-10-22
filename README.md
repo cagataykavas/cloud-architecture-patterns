@@ -93,3 +93,31 @@ print(decision.to_dict())
 Thresholds are configurable operational policy, not universal defaults. The evaluator
 assumes the supplied counters use the same SLI definition and correctly nested time
 windows; it does not query a monitoring backend or deduplicate requests.
+
+### Prometheus adapter
+
+`windows_from_prometheus` connects the policy core to paired Prometheus HTTP API
+instant vectors while keeping HTTP transport outside the trusted evaluator. It
+requires an explicit bounded window set and validates fresh paired timestamps,
+integer counter semantics, complete request/failure coverage, duplicate-free JSON,
+label/result budgets, and a configurable 256 KiB payload ceiling before constructing
+`SLIWindow` objects.
+
+```python
+from datetime import UTC, datetime
+
+from cloud_patterns.prometheus_sli import windows_from_prometheus
+
+windows = windows_from_prometheus(
+    requests_response_body,
+    failures_response_body,
+    expected_windows=("5m", "1h"),
+    observed_at=datetime.now(UTC),
+)
+```
+
+The adapter trusts the HTTPS client, Prometheus server, query definitions and clock.
+It validates returned evidence but does not prove that both queries used identical
+filters or that the counters are monotonic and reset-safe. Production recording rules
+should emit exact integer counts over closed windows with the same label scope;
+extrapolated `rate()` or `increase()` results are intentionally outside this contract.
