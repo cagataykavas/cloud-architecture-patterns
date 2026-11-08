@@ -96,8 +96,11 @@ timestamps, dependency cycles, and inputs above 2 MiB. Plans are bounded to 1,02
 8,192 dependency edges; reports retain at most 2,048 findings while preserving the total count and
 truncation flag.
 
-This module does not parse raw provider plans. The adapter that maps Terraform/OpenTofu/provider
-output into this contract is a trust boundary and must not omit dependencies or posture changes.
+`tools.terraform_plan_adapter` now provides a strict adapter for Terraform/OpenTofu
+`show -json` plus a reviewed provider-specific inventory. See
+[`terraform-plan-adapter.md`](terraform-plan-adapter.md) for its exact-coverage,
+unknown-value, sensitive-value, and posture-mapping contract. The reviewed inventory remains a
+trust boundary and must not omit dependencies or misclassify posture paths.
 The source-revision and state-snapshot digests bind content but do not authenticate it; production
 approval digests should refer to signed, immutable approval records.
 
