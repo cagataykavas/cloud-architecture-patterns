@@ -64,3 +64,11 @@ Use compensating actions instead of one distributed ACID transaction when indepe
 Commit business state and an outbox event in one local database transaction, then publish asynchronously. This avoids the dual-write failure window.
 
 The goal of this repository is not memorizing vendor names; it is learning architectures that survive vendor changes.
+
+## Infrastructure change admission
+
+The repository also includes a fail-closed blast-radius gate and a reviewed
+Terraform/OpenTofu `show -json` adapter. The adapter converts exact lifecycle actions
+and explicit provider-state posture mappings into the gate's vendor-neutral evidence
+contract; incomplete, uncatalogued, unknown, sensitive, or unsupported changes are
+rejected. See [`docs/terraform-plan-adapter.md`](docs/terraform-plan-adapter.md).
