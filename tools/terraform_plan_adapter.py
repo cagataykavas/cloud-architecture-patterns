@@ -403,6 +403,7 @@ def adapt_terraform_plan(
         "plan_id": f"tfplan-{plan_digest[:32]}",
         "source_revision": source_revision,
         "state_snapshot_digest": _digest(raw_plan["prior_state"]),
+        "inventory_digest": _digest(catalog),
         "resources": normalized,
     }
     try:

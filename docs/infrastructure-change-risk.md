@@ -42,6 +42,7 @@ change ticket, approval digest, backup verification timestamp, and replacement r
   "plan_id": "prod-plan-42",
   "source_revision": "<lowercase SHA-256>",
   "state_snapshot_digest": "<lowercase SHA-256>",
+  "inventory_digest": "<lowercase SHA-256>",
   "resources": [
     {
       "id": "orders-db",
@@ -108,3 +109,8 @@ Static plan evidence cannot prove that a backup restores, quotas remain availabl
 provider admission is unchanged, or apply finishes atomically. The gate complements policy-as-code,
 provider-native plan review, staged rollout, and post-apply reconciliation; it does not replace
 them.
+
+`tools.terraform_apply_reconciler` implements the post-apply governed-state comparison for the raw
+Terraform/OpenTofu adapter. See
+[`terraform-apply-reconciliation.md`](terraform-apply-reconciliation.md) for the resource-set,
+privacy, and state-producer trust boundaries.
