@@ -160,6 +160,7 @@ def test_adapter_produces_gate_compatible_dependency_evidence() -> None:
     assert report.maximum_resource_blast_radius == 2
     assert normalized["plan_id"].startswith("tfplan-")
     assert normalized["state_snapshot_digest"]
+    assert normalized["inventory_digest"]
     assert all(
         "data.aws_caller_identity" not in row["id"] for row in normalized["resources"]
     )

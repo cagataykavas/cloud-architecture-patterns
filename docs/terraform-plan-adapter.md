@@ -83,8 +83,10 @@ provider marked sensitive.
 
 ## Evidence and trust boundary
 
-The normalized plan ID commits to the complete raw plan and reviewed inventory;
-resource-list order does not change the identity. The state snapshot digest commits
+The normalized plan ID commits to the complete raw plan and reviewed inventory, while
+`inventory_digest` separately permits the post-apply reconciler to reject a changed selector
+catalog without needing the raw plan again. Resource-list order does not change the identity.
+The state snapshot digest commits
 to `prior_state`, while the downstream audit digest commits to all normalized
 actions, metadata, dependencies, and posture values. Raw provider attributes are
 not copied into the audit report.
@@ -99,3 +101,8 @@ accepted digest with post-apply reconciliation evidence.
 This is an admission adapter, not an apply executor. It does not authenticate the
 plan producer, prove restore success, validate provider behavior, or guarantee that
 the reviewed plan is the artifact eventually applied.
+
+After apply, run the [post-apply reconciler](terraform-apply-reconciliation.md) against
+the resulting `terraform show -json` state. It reuses this inventory's posture selectors,
+checks the complete expected resource set, and binds the observed managed state into a
+privacy-reduced release artifact.

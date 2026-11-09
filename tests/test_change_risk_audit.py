@@ -85,6 +85,7 @@ def valid_plan() -> dict:
         "plan_id": "plan-prod-42",
         "source_revision": DIGEST_A,
         "state_snapshot_digest": DIGEST_B,
+        "inventory_digest": DIGEST_C,
         "resources": [
             resource("network", kind="network"),
             resource(
@@ -131,6 +132,7 @@ def test_safe_update_is_accepted_with_transitive_blast_radius() -> None:
     assert report.critical_changed_count == 1
     assert report.critical_impacted_count == 2
     assert report.maximum_resource_blast_radius == 3
+    assert report.inventory_digest == DIGEST_C
     assert report.findings == ()
 
 

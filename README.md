@@ -71,4 +71,7 @@ The repository also includes a fail-closed blast-radius gate and a reviewed
 Terraform/OpenTofu `show -json` adapter. The adapter converts exact lifecycle actions
 and explicit provider-state posture mappings into the gate's vendor-neutral evidence
 contract; incomplete, uncatalogued, unknown, sensitive, or unsupported changes are
-rejected. See [`docs/terraform-plan-adapter.md`](docs/terraform-plan-adapter.md).
+rejected. A post-apply reconciler then checks that the complete managed-resource set
+and governed posture match the approved result without exposing raw resource identities.
+See [`docs/terraform-plan-adapter.md`](docs/terraform-plan-adapter.md) and
+[`docs/terraform-apply-reconciliation.md`](docs/terraform-apply-reconciliation.md).

@@ -78,6 +78,7 @@ class ChangePlan:
     plan_id: str
     source_revision: str
     state_snapshot_digest: str
+    inventory_digest: str
     resources: tuple[ResourceChange, ...]
 
 
@@ -127,6 +128,7 @@ class ChangeRiskReport:
     plan_ref: str
     source_revision: str
     state_snapshot_digest: str
+    inventory_digest: str
     generated_at: str
     resource_count: int
     changed_resource_count: int
@@ -278,6 +280,7 @@ def parse_plan(value: object) -> ChangePlan:
             "plan_id",
             "source_revision",
             "state_snapshot_digest",
+            "inventory_digest",
             "resources",
         },
         "plan",
@@ -394,6 +397,7 @@ def parse_plan(value: object) -> ChangePlan:
         state_snapshot_digest=_required_digest(
             root["state_snapshot_digest"], "state_snapshot_digest"
         ),
+        inventory_digest=_required_digest(root["inventory_digest"], "inventory_digest"),
         resources=tuple(resources),
     )
 
@@ -431,6 +435,7 @@ def _canonical_plan(plan: ChangePlan) -> dict[str, Any]:
         "plan_id": plan.plan_id,
         "source_revision": plan.source_revision,
         "state_snapshot_digest": plan.state_snapshot_digest,
+        "inventory_digest": plan.inventory_digest,
         "resources": [
             {
                 "id": resource.resource_id,
@@ -615,6 +620,7 @@ def audit_change_plan(
         plan_ref=_ref(parsed.plan_id),
         source_revision=parsed.source_revision,
         state_snapshot_digest=parsed.state_snapshot_digest,
+        inventory_digest=parsed.inventory_digest,
         generated_at=_format_timestamp(parsed.generated_at),
         resource_count=len(parsed.resources),
         changed_resource_count=len(changed),

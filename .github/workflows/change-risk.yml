@@ -22,14 +22,20 @@ jobs:
       - run: >-
           ruff check --config "lint.isort.known-first-party=['tools']"
           tools/change_risk_audit.py tools/terraform_plan_adapter.py
+          tools/terraform_apply_reconciler.py
           tests/test_change_risk_audit.py tests/test_terraform_plan_adapter.py
+          tests/test_terraform_apply_reconciler.py
       - run: >-
           ruff format --check --isolated
           tools/change_risk_audit.py tools/terraform_plan_adapter.py
+          tools/terraform_apply_reconciler.py
           tests/test_change_risk_audit.py tests/test_terraform_plan_adapter.py
+          tests/test_terraform_apply_reconciler.py
       - run: >-
           python -m pytest -q
           tests/test_change_risk_audit.py tests/test_terraform_plan_adapter.py
+          tests/test_terraform_apply_reconciler.py
       - run: >-
           python -m compileall -q tools
           tests/test_change_risk_audit.py tests/test_terraform_plan_adapter.py
+          tests/test_terraform_apply_reconciler.py
