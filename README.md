@@ -64,3 +64,9 @@ Use compensating actions instead of one distributed ACID transaction when indepe
 Commit business state and an outbox event in one local database transaction, then publish asynchronously. This avoids the dual-write failure window.
 
 The goal of this repository is not memorizing vendor names; it is learning architectures that survive vendor changes.
+
+## Engineering audits
+
+- [Workload identity trust audit](identity_trust_audit.md): deterministic cross-cloud checks for
+  wildcard trust, static credentials, privileged workloads, federation subject scope, and
+  break-glass lifecycle evidence.
